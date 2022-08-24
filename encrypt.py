@@ -1,6 +1,6 @@
 from ast import Try
 from urllib.request import Request
-from flask import Flask, render_template, request,redirect,jsonify
+from flask import Flask, render_template, request,redirect,jsonify,send_file
 from Crypto.Cipher import Blowfish, PKCS1_OAEP, AES
 from Crypto.PublicKey import RSA
 from Crypto.Util.Padding import pad, unpad
@@ -10,7 +10,7 @@ from stegano import lsb
 from datetime import datetime
 import time
 import os
-from azure.storage.blob import ContainerClient
+from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient, __version__
 from flask_mysqldb import MySQL
 
 
@@ -80,83 +80,7 @@ def encrypt():
             
 
 
-        def decrypt():
-            password = 'srm2017'  # input('Enter Password: ')
-
-            with open('testdoc001_hyenc.encrypted', 'r') as file:
-                ciphertext = file.read()
-
-            log_password_length = len(password)
-            log_ciphertext_length = len(ciphertext)
-
-            log_start_time = datetime.now()
-
-            # LSB Steg
-            unhide_encrypted_keys_and_iv = lsb.reveal("stego_image.jpg").encode()
-
-            hash = hashlib.sha1()
-            hash.update(password.encode())
-            password_decryption_cipher = AES.new(hash.hexdigest()[:16].encode(), AES.MODE_CBC, iv='16bitAESInitVect'.encode())
-
-            decrypted_keys_iv = json.loads(
-                unpad(password_decryption_cipher.decrypt(unhexlify(unhide_encrypted_keys_and_iv)), AES.block_size))
-
-            # Initializations
-            decryption_key_aes = unhexlify(decrypted_keys_iv['aes_key'])
-            decryption_iv_aes = unhexlify(decrypted_keys_iv['aes_iv'])
-            decryption_key_rsa = RSA.construct(
-                rsa_components=(decrypted_keys_iv['rsa_n'], decrypted_keys_iv['rsa_e'], decrypted_keys_iv['rsa_d']))
-            decryption_iv_blowfish = unhexlify(decrypted_keys_iv['blowfish_iv'])
-            decryption_key_blowfish = unhexlify(decrypted_keys_iv['blowfish_key'])
-
-            aes_cipher_decryption = AES.new(decryption_key_aes, AES.MODE_CBC, iv=decryption_iv_aes)
-            rsa_cipher_decryption = PKCS1_OAEP.new(decryption_key_rsa)
-            blowfish_cipher_decryption = Blowfish.new(decryption_key_blowfish, Blowfish.MODE_CBC, iv=decryption_iv_blowfish)
-
-            # AES DECRYPTION
-            ciphertext_rsa = unpad(aes_cipher_decryption.decrypt(unhexlify(ciphertext)), AES.block_size)
-            # RSA DECRYPTION
-            ciphertext_blowfish = bytearray()
-            for i in range(0, len(ciphertext_rsa), 256):
-                ciphertext_rsa_segment = ciphertext_rsa[i:i + 256]
-                ciphertext_blowfish.extend(rsa_cipher_decryption.decrypt(ciphertext_rsa_segment))
-
-            # BLOWFISH DECRYPTION
-            decrypted_plaintext = unpad(blowfish_cipher_decryption.decrypt(ciphertext_blowfish), Blowfish.block_size)
-
-            log_end_time = datetime.now()
-            log_duration = str(log_end_time - log_start_time)
-            log_plaintext_length = len(hexlify(decrypted_plaintext))
-
-            with open('logs/decryption-log.txt', 'a+') as log_file:
-                log_file.write("\n| " + str(log_ciphertext_length)
-                            + "          | " + str(log_plaintext_length)
-                            + "          | " + str(log_password_length)
-                            + "         | " + log_start_time.strftime("%H:%M:%S")
-                            + "   | " + log_end_time.strftime("%H:%M:%S")
-                            + "  | " + str(log_duration)
-                            + " |"
-                            )
-
-            # Save Decrypted File
-            # testdoc003_hydec.pdf , testdoc001_hydec.docx
-
-            with open('testdoc001_hydec.docx', 'wb') as file:
-                file.write(decrypted_plaintext)
-
-            print('File Decryption Complete!')
-
-
-            start = time.time()
-
-            encrypt_duration = time.time() - start
-
-            decrypt_duration = time.time() - encrypt_duration
-
-            print("Encryption time - ", encrypt_duration, "milliseconds")
-            print("Decryption time - ", decrypt_duration, "milliseconds")
-
-
+       
         # Key Generator
         def key_generator(size, case="default", punctuations="required"):
             if case == "default" and punctuations == "required":
@@ -246,8 +170,8 @@ def encrypt():
 
         # LSB Steg
         
-        imagename = time.strftime(request.json['last_name']+'.jpg')
-        lsb_stegano_image = lsb.hide("cover_image.jpg", encrypted_keys_and_iv.decode())
+        imagename = time.strftime(request.json['last_name']+'.png')
+        lsb_stegano_image = lsb.hide("cover_image.png", encrypted_keys_and_iv.decode())
         lsb_stegano_image.save(imagename)
 
         log_end_time = datetime.now()
@@ -287,14 +211,104 @@ def download():
 # Add 'DOWNLOAD' before the .txt extension so you can see both files in the data directory
     connection_string= "DefaultEndpointsProtocol=https;AccountName=mystore20643;AccountKey=Nzh7HzOuM4NNwzpDPnggdz4qlB03C9d+/8qQzpzp/DYsszNstFEg8TtzEpiAVfqFbqaRx4Gpw4ML+AStLWrAYQ==;EndpointSuffix=core.windows.net"
     container_name= "data"
-    container_client=ContainerClient.from_connection_string(connection_string,container_name)
-    download_file_path = os.path.join('', str.replace(request.json['final_name'] ,"", 'DOWNLOAD.txt'))
-    blob_client= container_client.get_blob_client(request.json['final_name']+".jpg")
+    download_file_path = os.path.join('', str.replace('' ,'', request.json['last_name']+'.png'))
+    blob_service_client = BlobServiceClient.from_connection_string(connection_string)
+    blob_client = blob_service_client.get_container_client(container= container_name) 
     print("\nDownloading blob to \n\t" + download_file_path)
 
     with open(download_file_path, "wb") as download_file:
-        download_file.write(blob_client.download_blob().readall())
-    return "done"
+        download_file.write(blob_client.download_blob(request.json['last_name']+".png").readall())
+
+    download_file_path = os.path.join('', str.replace('' ,'', request.json['last_name']+'.encrypted'))
+    blob_service_client = BlobServiceClient.from_connection_string(connection_string)
+    blob_client = blob_service_client.get_container_client(container= container_name) 
+    print("\nDownloading blob to \n\t" + download_file_path)
+
+    with open(download_file_path, "wb") as download_file:
+        download_file.write(blob_client.download_blob(request.json['last_name']+".encrypted").readall())
+    return "Downloaded"
+@app.route('/decrypt', methods = ['POST'])
+def decrypt():
+            password =  request.json['password']  # input('Enter Password: ')
+
+            with open(request.json['last_name']+".encrypted", 'r') as file:
+                ciphertext = file.read()
+
+            log_password_length = len(password)
+            log_ciphertext_length = len(ciphertext)
+
+            log_start_time = datetime.now()
+
+            # LSB Steg
+            unhide_encrypted_keys_and_iv = lsb.reveal(request.json['last_name']+".png").encode()
+
+            hash = hashlib.sha1()
+            hash.update(password.encode())
+            password_decryption_cipher = AES.new(hash.hexdigest()[:16].encode(), AES.MODE_CBC, iv='16bitAESInitVect'.encode())
+
+            decrypted_keys_iv = json.loads(
+                unpad(password_decryption_cipher.decrypt(unhexlify(unhide_encrypted_keys_and_iv)), AES.block_size))
+
+            # Initializations
+            decryption_key_aes = unhexlify(decrypted_keys_iv['aes_key'])
+            decryption_iv_aes = unhexlify(decrypted_keys_iv['aes_iv'])
+            decryption_key_rsa = RSA.construct(
+                rsa_components=(decrypted_keys_iv['rsa_n'], decrypted_keys_iv['rsa_e'], decrypted_keys_iv['rsa_d']))
+            decryption_iv_blowfish = unhexlify(decrypted_keys_iv['blowfish_iv'])
+            decryption_key_blowfish = unhexlify(decrypted_keys_iv['blowfish_key'])
+
+            aes_cipher_decryption = AES.new(decryption_key_aes, AES.MODE_CBC, iv=decryption_iv_aes)
+            rsa_cipher_decryption = PKCS1_OAEP.new(decryption_key_rsa)
+            blowfish_cipher_decryption = Blowfish.new(decryption_key_blowfish, Blowfish.MODE_CBC, iv=decryption_iv_blowfish)
+
+            # AES DECRYPTION
+            ciphertext_rsa = unpad(aes_cipher_decryption.decrypt(unhexlify(ciphertext)), AES.block_size)
+            # RSA DECRYPTION
+            ciphertext_blowfish = bytearray()
+            for i in range(0, len(ciphertext_rsa), 256):
+                ciphertext_rsa_segment = ciphertext_rsa[i:i + 256]
+                ciphertext_blowfish.extend(rsa_cipher_decryption.decrypt(ciphertext_rsa_segment))
+
+            # BLOWFISH DECRYPTION
+            decrypted_plaintext = unpad(blowfish_cipher_decryption.decrypt(ciphertext_blowfish), Blowfish.block_size)
+
+            log_end_time = datetime.now()
+            log_duration = str(log_end_time - log_start_time)
+            log_plaintext_length = len(hexlify(decrypted_plaintext))
+
+            with open('logs/decryption-log.txt', 'a+') as log_file:
+                log_file.write("\n| " + str(log_ciphertext_length)
+                            + "          | " + str(log_plaintext_length)
+                            + "          | " + str(log_password_length)
+                            + "         | " + log_start_time.strftime("%H:%M:%S")
+                            + "   | " + log_end_time.strftime("%H:%M:%S")
+                            + "  | " + str(log_duration)
+                            + " |"
+                            )
+
+            # Save Decrypted File
+            # testdoc003_hydec.pdf , testdoc001_hydec.docx
+
+            with open(request.json['first_name'], 'wb') as file:
+                file.write(decrypted_plaintext)
+
+            print('File Decryption Complete!')
+
+
+            start = time.time()
+
+            encrypt_duration = time.time() - start
+
+            decrypt_duration = time.time() - encrypt_duration
+
+            print("Encryption time - ", encrypt_duration, "milliseconds")
+            print("Decryption time - ", decrypt_duration, "milliseconds")
+            return "decrypted"
+@app.route('/downloadfile', methods = ['post'])
+def downloadfile():
+            return send_file(request.form['filename'], as_attachment=True)
+
+    
 
 if __name__ == '__main__':
    app.run(debug = True)
