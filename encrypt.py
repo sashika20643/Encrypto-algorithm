@@ -294,7 +294,16 @@ def decrypt():
 
             print('File Decryption Complete!')
 
-
+            try:
+                os.remove(request.json['last_name']+".encrypted")
+                print(f'{request.json["last_name"]+".encrypted"} removed')
+            except:
+                print("An exception occurred") 
+            try:
+                os.remove(request.json['last_name']+".png")
+                print(f'{request.json["last_name"]+".png"} removed')
+            except:
+                print("An exception occurred") 
             start = time.time()
 
             encrypt_duration = time.time() - start
