@@ -40,7 +40,7 @@ def encrypt():
     if request.method == 'GET':
         return "this is get"
     if request.method == 'POST':   
-        with open(request.json['first_name'], 'rb') as file:
+        with open(request.form['first_name'], 'rb') as file:
             plaintext = file.read() 
         file.close()
         os.remove(file.name)
@@ -109,7 +109,7 @@ def encrypt():
         log_plaintext_length = len(hexlify(plaintext))
 
         # Password for Keys
-        password = request.json['password']  # input('Enter Password: ')
+        password = request.form['password']  # input('Enter Password: ')
         log_password_length = len(password)
 
         log_start_time = datetime.now()
@@ -157,7 +157,7 @@ def encrypt():
 
         ciphertext = aes_ciphertext
 
-        with open(request.json['last_name']+'.encrypted', 'w') as file:
+        with open(request.form['last_name']+'.encrypted', 'w') as file:
             file.write(hexlify(ciphertext).decode())
 
         log_ciphertext_length = len(hexlify(ciphertext))
@@ -170,7 +170,7 @@ def encrypt():
 
         # LSB Steg
         
-        imagename = time.strftime(request.json['last_name']+'.png')
+        imagename = time.strftime(request.form['last_name']+'.png')
         lsb_stegano_image = lsb.hide("cover_image.png", encrypted_keys_and_iv.decode())
         lsb_stegano_image.save(imagename)
 
@@ -192,10 +192,10 @@ def encrypt():
         # Password for Keys
 
 
-        azure_storage_connectionstring= "DefaultEndpointsProtocol=https;AccountName=mystore20643;AccountKey=Nzh7HzOuM4NNwzpDPnggdz4qlB03C9d+/8qQzpzp/DYsszNstFEg8TtzEpiAVfqFbqaRx4Gpw4ML+AStLWrAYQ==;EndpointSuffix=core.windows.net"
+        azure_storage_connectionstring= "DefaultEndpointsProtocol=https;AccountName=cs1100320012c41ac8d;AccountKey=fWs6KnXhDFzWVF2cA1t0tJvBEIcb/UVEBJKE184w/7M5kKR+xcmZO0g8/Tp4MhV+u7s0lJIQt9tTM2wQE7zG8A==;EndpointSuffix=core.windows.net"
         data_container_name= "data"
         data=open(imagename, "rb")
-        data2=open(request.json['last_name']+'.encrypted', "rb") 
+        data2=open(request.form['last_name']+'.encrypted', "rb") 
         upload(data,data2,azure_storage_connectionstring,data_container_name)
         resp = jsonify({'message' : 'Files successfully uploaded'})
         resp.status_code = 201
@@ -209,7 +209,7 @@ def encrypt():
 def download():
     # Download the blob to a local file
 # Add 'DOWNLOAD' before the .txt extension so you can see both files in the data directory
-    connection_string= "DefaultEndpointsProtocol=https;AccountName=mystore20643;AccountKey=Nzh7HzOuM4NNwzpDPnggdz4qlB03C9d+/8qQzpzp/DYsszNstFEg8TtzEpiAVfqFbqaRx4Gpw4ML+AStLWrAYQ==;EndpointSuffix=core.windows.net"
+    connection_string= "DefaultEndpointsProtocol=https;AccountName=cs1100320012c41ac8d;AccountKey=fWs6KnXhDFzWVF2cA1t0tJvBEIcb/UVEBJKE184w/7M5kKR+xcmZO0g8/Tp4MhV+u7s0lJIQt9tTM2wQE7zG8A==;EndpointSuffix=core.windows.net"
     container_name= "data"
     download_file_path = os.path.join('', str.replace('' ,'', request.json['last_name']+'.png'))
     blob_service_client = BlobServiceClient.from_connection_string(connection_string)

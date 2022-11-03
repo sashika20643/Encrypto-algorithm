@@ -8,13 +8,40 @@
 </head>
 <body>
    
-      <form action = "http://127.0.0.1:5000" method = "POST" 
+      <!-- <form action = "http://127.0.0.1:5000" method = "POST" 
          enctype = "multipart/form-data">
          <input type = "file" name = "file" />
          <input type = "submit"/>
-      </form>   
+      </form>    -->
+      <button class="favorite" name="fuck">cloick</button>
+      <script src="https://code.jquery.com/jquery-3.6.0.js" integrity="sha256-H+K7U5CnXl1h5ywQfKtSj8PCmoN9aaq30gDh27Xc0jk=" crossorigin="anonymous"></script>
 
-    
+    <script>
+      $(document).ready(function(){
+var clicked;
+$(".favorite").click(function(){
+clicked ="fuck";
+$.ajax({
+  type : 'POST',
+  url : "http://127.0.0.1:5000/test/",
+  contentType: 'application/json;',
+  data : JSON.stringify({'data':clicked}),
+  uploadProgress: function(event, position, total, percentComplete) {
+                var percentVal = percentComplete + '%';
+                console.log(percentVal)
+               //  $(bar).animate({width:percentVal});
+               //  percent.html(percentVal);
+
+            },
+  complete: function (response) { // display success response
+						console.log(response.responseText);
+                    
+
+					}
+});
+ });
+});
+    </script>
 
      
    </body>
